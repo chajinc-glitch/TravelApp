@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>여행지 추천</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        label { display: block; margin-top: 10px; }
+        input, select { margin-top: 5px; }
+        button { margin-top: 15px; }
+        .travel-card { border: 1px solid #ccc; padding: 10px; margin-top: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>여행지 추천</h1>
+
+    <label for="country">나라:</label>
+    <input type="text" id="country" placeholder="예: 한국">
+
+    <label for="theme">여행 테마:</label>
+    <select id="theme">
+        <option value="힐링">힐링</option>
+        <option value="액티비티">액티비티</option>
+        <option value="문화">문화</option>
+        <option value="쇼핑">쇼핑</option>
+    </select>
+
+    <button onclick="recommend()">추천 받기</button>
+
+    <div id="results"></div>
+
+    <script>
+        async function recommend() {
+            const country = document.getElementById("country").value;
+            const theme = document.getElementById("theme").value;
+
+            const response = await fetch('/recommend', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({country, theme})
+            });
+
+            const data = await response.json();
+            const resultsDiv = document.getElementById("results");
+            resultsDiv.innerHTML = "";
+
+            if (data.length === 0) {
+                resultsDiv.innerHTML = `<p>조건에 맞는 여행지가 없습니다.</p>`;
+            } else {
+                data.forEach(t => {
+                    const card = document.createElement("div");
+                    card.className = "travel-card";
+                    card.innerHTML = `<strong>${t.name} (${t.region})</strong><br>${t.description}`;
+                    resultsDiv.appendChild(card);
+                });
+            }
+        }
+    </script>
+</body>
+</html>
