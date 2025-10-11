@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>여행지 추천</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        label { display: block; margin-top: 10px; }
+        input, select { margin-top: 5px; }
+        button { margin-top: 15px; padding: 5px 10px; }
+        .travel-card { border: 1px solid #ccc; padding: 10px; margin-top: 10px; border-radius: 5px; }
+        .travel-card img { max-width: 100%; border-radius: 5px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <h1>여행지 추천</h1>
+
+    <label for="country">나라:</label>
+    <input type="text" id="country" placeholder="예: 그리스">
+
+    <label for="theme">여행 테마:</label>
+    <select id="theme">
+        <option value="힐링">힐링</option>
+        <option value="액티비티">액티비티</option>
+        <option value="문화">문화</option>
+        <option value="쇼핑">쇼핑</option>
+    </select>
+
+    <button onclick="recommend()">추천 받기</button>
+
+    <div id="results"></div>
+
+    <script>
+        async function recommend() {
+            const country = document.getElementById("country").value;
+            const theme = document.getElementById("theme").value;
+
+            const resultsDiv = document.getElementById("results");
+            resultsDiv.innerHTML = `<p>추천 여행지를 불러오는 중...</p>`;
+
+            try {
+                const response = await fetch('/recommend', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({country, theme})
+                });
+
+                const data = await response.json();
+                resultsDiv.innerHTML = "";
+
+                if (!data || data.length === 0 || data.error) {
+                    resultsDiv.innerHTML = `<p>추천 여행지를 불러올 수 없습니다.</p>`;
+                    if (data && data.error) console.error(data.error);
+                    return;
+                }
+
+                data.forEach((t, i) => {
+                    const card = document.createElement("div");
+                    card.className = "travel-card";
+                    card.innerHTML = `<strong>${i+1}. ${t.name} (${t.region})</strong><br>${t.description}<br>
+                                      <img src="${t.image}" alt="${t.name}">`;
+                    resultsDiv.appendChild(card);
+                });
+
+            } catch (err) {
+                resultsDiv.innerHTML = `<p>오류 발생: ${err}</p>`;
+                console.error(err);
+            }
+        }
+    </script>
+</body>
+</html>
