@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>해외 여행 지역 선택</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  body { font-family: Arial, sans-serif; margin:0; display:flex; }
+  #sidebar { width: 250px; padding: 20px; background:#f0f0f0; }
+  select { width: 100%; margin-bottom: 10px; padding:5px; }
+  #map { flex:1; height:100vh; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h3>지역 선택</h3>
+  <select id="continent">
+    <option value="">대륙 선택</option>
+  </select>
+  <select id="country" disabled>
+    <option value="">국가 선택</option>
+  </select>
+  <select id="city" disabled>
+    <option value="">도시 선택</option>
+  </select>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const data = {
+  "아시아": {
+    "한국": { lat:36.5, lng:127.5, cities: { "서울":[37.5665,126.9780], "부산":[35.1796,129.0756] } },
+    "일본": { lat:36.0, lng:138.0, cities: { "도쿄":[35.6895,139.6917], "오사카":[34.6937,135.5023] } }
+  },
+  "유럽": {
+    "프랑스": { lat:46.2276, lng:2.2137, cities: { "파리":[48.8566,2.3522] } }
+  }
+};
+
+// 지도 초기화
+const map = L.map('map').setView([20,0], 2);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap'
+}).addTo(map);
+
+const continentSelect = document.getElementById("continent");
+const countrySelect = document.getElementById("country");
+const citySelect = document.getElementById("city");
+
+let currentMarker = null;
+
+// 대륙 옵션 채우기
+Object.keys(data).forEach(cont => {
+  const opt = document.createElement("option");
+  opt.value = cont;
+  opt.textContent = cont;
+  continentSelect.appendChild(opt);
+});
+
+// 이벤트
+continentSelect.addEventListener("change", ()=>{
+  countrySelect.innerHTML = '<option value="">국가 선택</option>';
+  citySelect.innerHTML = '<option value="">도시 선택</option>';
+  countrySelect.disabled = true;
+  citySelect.disabled = true;
+  const cont = continentSelect.value;
+  if(!cont) return;
+  Object.keys(data[cont]).forEach(cn => {
+    const opt = document.createElement("option");
+    opt.value = cn;
+    opt.textContent = cn;
+    countrySelect.appendChild(opt);
+  });
+  countrySelect.disabled = false;
+
+  const firstCountry = Object.values(data[cont])[0];
+  map.setView([firstCountry.lat, firstCountry.lng], 3);
+});
+
+countrySelect.addEventListener("change", ()=>{
+  citySelect.innerHTML = '<option value="">도시 선택</option>';
+  citySelect.disabled = true;
+  const cont = continentSelect.value;
+  const cn = countrySelect.value;
+  if(!cn) return;
+  Object.keys(data[cont][cn].cities).forEach(city=>{
+    const opt = document.createElement("option");
+    opt.value = city;
+    opt.textContent = city;
+    citySelect.appendChild(opt);
+  });
+  citySelect.disabled = false;
+
+  const country = data[cont][cn];
+  map.setView([country.lat, country.lng], 5);
+});
+
+// === 수정된 부분: city 선택 시 getCityInfo 호출 ===
+citySelect.addEventListener("change", async ()=>{
+  const cont = continentSelect.value;
+  const cn = countrySelect.value;
+  const city = citySelect.value;
+  if(currentMarker) map.removeLayer(currentMarker);
+  const coords = data[cont][cn].cities[city];
+
+  try {
+    const res = await fetch("/getCityInfo", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({city: city, country: cn})
+    });
+    const place = await res.json();
+
+    const popupContent = `
+      <b>${place.name}, ${place.country}</b><br>
+      <img src="${place.image}" alt="${place.name}" style="width:200px;height:auto;"><br>
+      <p>${place.description}</p>
+    `;
+
+    currentMarker = L.marker(coords).addTo(map).bindPopup(popupContent).openPopup();
+    map.setView(coords, 10);
+  } catch(err) {
+    console.error(err);
+    currentMarker = L.marker(coords).addTo(map)
+      .bindPopup(`${city}, ${cn} (정보 불러오기 실패)`).openPopup();
+    map.setView(coords, 10);
+  }
+});
+</script>
+</body>
+</html>
