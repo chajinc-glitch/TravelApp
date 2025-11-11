@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>떠나자 - 항공권 검색</title>
+  <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Arial', sans-serif; margin: 0; background: #f5f6fa; }
+    header { position: sticky; top: 0; z-index: 1000; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .navbar { display: flex; justify-content: space-between; align-items: center; padding: 15px 60px; }
+    .logo { font-size: 36px; font-weight: bold; color: #00aaff; cursor: pointer; font-family: 'Gaegu', cursive; }
+    .nav-links { list-style: none; display: flex; gap: 30px; margin: 0; padding: 0; }
+    .nav-links li a { text-decoration: none; color: #333; font-weight: bold; font-size: 18px; }
+    .nav-links li a:hover { color: #00aaff; }
+
+    .hero { position: relative; height: 400px; background: url('https://png.pngtree.com/thumb_back/fw800/background/20230829/pngtree-an-airplane-wing-in-the-sky-at-sunset-image_13152621.jpg') center/cover no-repeat; display: flex; justify-content: center; align-items: center; }
+    .hero-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 50%; background: rgba(0,0,0,0.3); }
+    .flight-title { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 36px; color: white; font-weight: bold; text-shadow: 2px 2px 6px rgba(0,0,0,0.7); }
+
+    .flight-box { position: relative; top: -50px; background: #fff; padding: 20px; border-radius: 12px; width: 80%; max-width: 900px; display: flex; flex-wrap: wrap; gap: 10px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+    .flight-box input { flex: 1 1 150px; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
+    .flight-box button { padding: 12px 20px; background: #00aaff; color: #fff; border: none; border-radius: 5px; cursor: pointer; transition: 0.3s; font-weight: bold; }
+    .flight-box button:hover { background: #007acc; }
+
+    #result { width: 80%; max-width: 900px; margin: 30px auto 60px auto; }
+
+    .flight-card { 
+      background: #fff; 
+      border-radius: 12px; 
+      padding: 25px; 
+      margin-bottom: 20px; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 12px; 
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08); 
+      transition: transform 0.2s, box-shadow 0.2s; 
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+    }
+    .flight-card:hover { 
+      transform: translateY(-5px); 
+      box-shadow: 0 8px 20px rgba(0,0,0,0.12); 
+    }
+    .flight-card h3 { margin: 0; color: #00aaff; font-size: 22px; }
+    .flight-card .info { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .flight-card .info-left { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+    .flight-card .flight-time { font-size: 20px; font-weight: bold; color: #333; margin: 0; }
+    .flight-card .flight-airline { font-size: 18px; color: #555; margin: 0; text-align: center; }
+    .flight-card .price { font-weight: bold; color: #00aaff; font-size: 18px; }
+
+    @media(max-width:1024px){
+      .flight-box { flex-direction: column; gap: 10px; top: -60px; }
+      .flight-card .info { flex-direction: column; gap: 5px; align-items: flex-start; }
+      .flight-card .info-left { align-items: center; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="navbar">
+      <div class="logo" onclick="location.href='/'">떠나자</div>
+      <ul class="nav-links">
+        <li><a href="/">홈</a></li>
+        <li><a href="/theme">테마</a></li>
+        <li><a href="/region">지역</a></li>
+        <li><a href="/flight">항공</a></li>
+        <li><a href="/hotel">숙소</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="hero-overlay"></div>
+    <div class="flight-title">항공권 검색</div>
+    <form class="flight-box" id="flightForm">
+      <input type="text" name="from" placeholder="출발지" required>
+      <input type="text" name="to" placeholder="도착지" required>
+      <input type="date" name="depart_date" required>
+      <input type="date" name="return_date" required>
+      <button type="submit">검색</button>
+    </form>
+  </section>
+
+  <div id="result"></div>
+
+  <script>
+    const form = document.getElementById('flightForm');
+    const resultDiv = document.getElementById('result');
+    const EXCHANGE_RATE = 1460;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      resultDiv.innerHTML = `<p>검색 중...</p>`;
+
+      const data = {
+        from: form.from.value,
+        to: form.to.value,
+        depart_date: form.depart_date.value,
+        return_date: form.return_date.value
+      };
+
+      try {
+        const response = await fetch('/search_flight', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        let flights = await response.json();
+
+        if(!flights || flights.error){
+          resultDiv.innerHTML = `<p>⚠ 검색 오류: ${flights?.error || '결과를 가져올 수 없습니다.'}</p>`;
+          return;
+        }
+
+        if(flights.length === 0){
+          resultDiv.innerHTML = `<p>⚠ 검색 결과가 없습니다.</p>`;
+          return;
+        }
+
+        // 중복 제거
+        const seen = new Set();
+        flights = flights.filter(f => {
+          const key = `${f.departure_time}_${f.arrival_time}_${f.airline}_${f.flight_number}`;
+          if(seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        flights = flights.slice(0, 10);
+
+        resultDiv.innerHTML = `<h2>검색 결과 (${flights.length}건)</h2>`;
+
+        flights.forEach((flight, idx) => {
+          const priceNumber = parseFloat(flight.price.replace(/[^0-9.]/g, '')) || 0;
+          const priceKRW = Math.round(priceNumber * EXCHANGE_RATE).toLocaleString();
+          const departDateFormatted = flight.departure_time ? flight.departure_time.split('T')[0] : data.depart_date;
+
+          // 항공사 URL 결정
+          let airlineURL = "#";
+          const airline = flight.airline || "";
+          if(airline.includes("티웨이") || airline.includes("Tway")){
+            airlineURL = `https://www.twayair.com/booking?dep=${flight.from}&arr=${flight.to}&date=${departDateFormatted}`;
+          } else if(airline.includes("대한항공")){
+            airlineURL = `https://www.koreanair.com/global/ko/booking/search?from=${flight.from}&to=${flight.to}&date=${departDateFormatted}`;
+          } else if(airline.includes("아시아나")){
+            airlineURL = `https://flyasiana.com/C/KR/booking/search?dep=${flight.from}&arr=${flight.to}&date=${departDateFormatted}`;
+          } else {
+            // 그 외 항공사 기본 링크 (검색 페이지)
+            airlineURL = `https://www.google.com/search?q=${flight.airline}+항공권+${flight.from}+${flight.to}+${departDateFormatted}`;
+          }
+
+          // 카드 생성
+          const card = document.createElement('div');
+          card.className = 'flight-card';
+          card.innerHTML = `
+            <h3>항공편 ${idx+1}</h3>
+            <div class="info">
+              <div class="info-left">
+                <p class="flight-time">${flight.departure_time} (${flight.from}) → ${flight.arrival_time} (${flight.to})</p>
+                <p class="flight-airline">${flight.airline} / 편명: ${flight.flight_number}</p>
+              </div>
+              <div class="price">₩${priceKRW}</div>
+            </div>
+          `;
+
+          // 카드 클릭 시 해당 항공사 예약 페이지 이동
+          card.addEventListener('click', () => {
+            window.location.href = airlineURL;
+          });
+
+          resultDiv.appendChild(card);
+        });
+
+      } catch(err){
+        resultDiv.innerHTML = `<p>⚠ 에러: ${err}</p>`;
+      }
+    });
+  </script>
+</body>
+</html>
