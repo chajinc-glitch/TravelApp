@@ -22,161 +22,241 @@
     .flight-box button { padding: 12px 20px; background: #00aaff; color: #fff; border: none; border-radius: 5px; cursor: pointer; transition: 0.3s; font-weight: bold; }
     .flight-box button:hover { background: #007acc; }
 
-    #result { width: 80%; max-width: 900px; margin: 30px auto 60px auto; }
+    /* 검색 결과 및 필터 레이아웃 */
+    .search-container { display: flex; width: 80%; max-width: 1200px; margin: 30px auto; gap: 20px; }
+    .filters { width: 250px; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+    .filters h3 { font-size: 20px; margin-bottom: 15px; border-bottom: 2px solid #00aaff; padding-bottom: 5px; }
+    .filter-group { margin-bottom: 20px; }
+    .filter-group label { display: block; margin-bottom: 8px; font-weight: bold; }
+    .filter-group input[type="checkbox"] { margin-right: 8px; }
+    .filter-group input[type="range"] { width: 100%; }
+
+    .results { flex: 1; }
+
+    #result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .sort-box { display: flex; align-items: center; gap: 10px; }
+    .sort-box select { padding: 6px 10px; border-radius:5px; border:1px solid #ddd; cursor:pointer; }
+
+    #result { display: flex; flex-direction: column; gap: 15px; }
 
     .flight-card { 
       background: #fff; 
       border-radius: 12px; 
-      padding: 25px; 
-      margin-bottom: 20px; 
+      padding: 20px; 
       display: flex; 
-      flex-direction: column; 
-      gap: 12px; 
+      justify-content: space-between; 
+      align-items: center; 
       box-shadow: 0 4px 16px rgba(0,0,0,0.08); 
+      cursor: pointer; 
       transition: transform 0.2s, box-shadow 0.2s; 
-      cursor: pointer;
-      text-decoration: none;
-      color: inherit;
     }
-    .flight-card:hover { 
-      transform: translateY(-5px); 
-      box-shadow: 0 8px 20px rgba(0,0,0,0.12); 
-    }
-    .flight-card h3 { margin: 0; color: #00aaff; font-size: 22px; }
-    .flight-card .info { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 10px; }
-    .flight-card .info-left { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
-    .flight-card .flight-time { font-size: 20px; font-weight: bold; color: #333; margin: 0; }
-    .flight-card .flight-airline { font-size: 18px; color: #555; margin: 0; text-align: center; }
-    .flight-card .price { font-weight: bold; color: #00aaff; font-size: 18px; }
-
-    @media(max-width:1024px){
-      .flight-box { flex-direction: column; gap: 10px; top: -60px; }
-      .flight-card .info { flex-direction: column; gap: 5px; align-items: flex-start; }
-      .flight-card .info-left { align-items: center; }
-    }
+    .flight-card:hover { transform: translateY(-5px); box-shadow:0 8px 20px rgba(0,0,0,0.12); }
+    .flight-info { display:flex; gap:15px; align-items:center; }
+    .flight-info img { width: 60px; height:60px; object-fit:contain; }
+    .flight-text { display:flex; flex-direction:column; }
+    .flight-text p { margin:0; }
+    .price { font-weight:bold; font-size:18px; color:#00aaff; }
   </style>
 </head>
 <body>
-  <header>
-    <nav class="navbar">
-      <div class="logo" onclick="location.href='/'">떠나자</div>
-      <ul class="nav-links">
-        <li><a href="/">홈</a></li>
-        <li><a href="/theme">테마</a></li>
-        <li><a href="/region">지역</a></li>
-        <li><a href="/flight">항공</a></li>
-        <li><a href="/hotel">숙소</a></li>
-      </ul>
-    </nav>
-  </header>
+<header>
+  <nav class="navbar">
+    <div class="logo" onclick="location.href='/'">떠나자</div>
+    <ul class="nav-links">
+      <li><a href="/">홈</a></li>
+      <li><a href="/theme">테마</a></li>
+      <li><a href="/region">지역</a></li>
+      <li><a href="/flight">항공</a></li>
+      <li><a href="/hotel">숙소</a></li>
+    </ul>
+  </nav>
+</header>
 
-  <section class="hero">
-    <div class="hero-overlay"></div>
-    <div class="flight-title">항공권 검색</div>
-    <form class="flight-box" id="flightForm">
-      <input type="text" name="from" placeholder="출발지" required>
-      <input type="text" name="to" placeholder="도착지" required>
-      <input type="date" name="depart_date" required>
-      <input type="date" name="return_date" required>
-      <button type="submit">검색</button>
-    </form>
-  </section>
+<section class="hero">
+  <div class="hero-overlay"></div>
+  <div class="flight-title">항공권 검색</div>
+  <form class="flight-box" id="flightForm">
+    <input type="text" name="from" placeholder="출발지" required>
+    <input type="text" name="to" placeholder="도착지" required>
+    <input type="date" name="depart_date" required>
+    <input type="date" name="return_date" required>
+    <button type="submit">검색</button>
+  </form>
+</section>
 
-  <div id="result"></div>
+<div class="search-container">
+  <div class="filters">
+    <h3>필터</h3>
 
-  <script>
-    const form = document.getElementById('flightForm');
-    const resultDiv = document.getElementById('result');
-    const EXCHANGE_RATE = 1460;
+    <div class="filter-group">
+      <label>직항 / 경유</label>
+      <input type="checkbox" id="direct" checked> 직항만
+      <input type="checkbox" id="stopover"> 경유 포함
+    </div>
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      resultDiv.innerHTML = `<p>검색 중...</p>`;
+    <div class="filter-group">
+      <label>가격대 (만원)</label>
+      <input type="range" id="priceRange" min="0" max="1000" value="1000">
+      <span id="priceLabel">1000만원 이하</span>
+    </div>
 
-      const data = {
-        from: form.from.value,
-        to: form.to.value,
-        depart_date: form.depart_date.value,
-        return_date: form.return_date.value
-      };
+    <div class="filter-group">
+      <label>항공사 선택</label>
+      <input type="checkbox" class="airline-filter" value="대한항공" checked> 대한항공<br>
+      <input type="checkbox" class="airline-filter" value="아시아나" checked> 아시아나<br>
+      <input type="checkbox" class="airline-filter" value="제주항공" checked> 제주항공<br>
+      <input type="checkbox" class="airline-filter" value="진에어" checked> 진에어<br>
+      <input type="checkbox" class="airline-filter" value="티웨이" checked> 티웨이<br>
+      <input type="checkbox" class="airline-filter" value="에어부산" checked> 에어부산<br>
+    </div>
+  </div>
 
-      try {
-        const response = await fetch('/search_flight', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
+  <div class="results">
+    <div id="result-header">
+      <h2 id="result-count">검색 결과</h2>
+      <div class="sort-box">
+        <span>정렬</span>
+        <select id="sortSelect">
+          <option value="price-asc">낮은 가격순</option>
+          <option value="price-desc">높은 가격순</option>
+        </select>
+      </div>
+    </div>
 
-        let flights = await response.json();
+    <div id="result"></div>
+  </div>
+</div>
 
-        if(!flights || flights.error){
-          resultDiv.innerHTML = `<p>⚠ 검색 오류: ${flights?.error || '결과를 가져올 수 없습니다.'}</p>`;
-          return;
-        }
+<script>
+const form = document.getElementById('flightForm');
+const resultDiv = document.getElementById('result');
+const sortSelect = document.getElementById('sortSelect');
+const priceRange = document.getElementById('priceRange');
+const priceLabel = document.getElementById('priceLabel');
+const directCheckbox = document.getElementById('direct');
+const stopoverCheckbox = document.getElementById('stopover');
+const airlineCheckboxes = document.querySelectorAll('.airline-filter');
 
-        if(flights.length === 0){
-          resultDiv.innerHTML = `<p>⚠ 검색 결과가 없습니다.</p>`;
-          return;
-        }
+const EXCHANGE_RATE = 1460;
+let currentFlights = [];
+let filteredFlights = [];
 
-        // 중복 제거
-        const seen = new Set();
-        flights = flights.filter(f => {
-          const key = `${f.departure_time}_${f.arrival_time}_${f.airline}_${f.flight_number}`;
-          if(seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
+const airlineLogos = {
+  "대한항공":"https://upload.wikimedia.org/wikipedia/commons/6/63/Korean_Air_logo.svg",
+  "아시아나":"https://upload.wikimedia.org/wikipedia/commons/4/4a/Asiana_Airlines_logo.svg",
+  "진에어":"https://upload.wikimedia.org/wikipedia/commons/4/4b/Jin_Air_logo.svg",
+  "제주항공":"https://upload.wikimedia.org/wikipedia/commons/9/91/Jeju_Air_logo.svg",
+  "에어부산":"https://upload.wikimedia.org/wikipedia/commons/9/9d/Air_Busan_logo.svg",
+  "이스타":"https://upload.wikimedia.org/wikipedia/commons/d/d0/Eastar_Jet_logo.svg"
+};
 
-        flights = flights.slice(0, 10);
+function drawCards(flights){
+  resultDiv.innerHTML='';
+  flights.forEach(f=>{
+    const card = document.createElement('div');
+    card.className='flight-card';
+    card.innerHTML=`
+      <div class="flight-info">
+        <img src="${f.logoUrl}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3799/3799805.png'">
+        <div class="flight-text">
+          <p>${f.airline} / 편명: ${f.flight_number}</p>
+          <p>${f.departure_time} (${f.from}) → ${f.arrival_time} (${f.to})</p>
+          <p>${f.stops || '직항'}</p>
+        </div>
+      </div>
+      <div class="price">₩${f.priceKRW.toLocaleString()}</div>
+    `;
+    card.addEventListener('click',()=>window.location.href=f.airlineURL);
+    resultDiv.appendChild(card);
+  });
+}
 
-        resultDiv.innerHTML = `<h2>검색 결과 (${flights.length}건)</h2>`;
+function updateResultCount(count){document.getElementById('result-count').textContent=`검색 결과 (${count}건)`;}
 
-        flights.forEach((flight, idx) => {
-          const priceNumber = parseFloat(flight.price.replace(/[^0-9.]/g, '')) || 0;
-          const priceKRW = Math.round(priceNumber * EXCHANGE_RATE).toLocaleString();
-          const departDateFormatted = flight.departure_time ? flight.departure_time.split('T')[0] : data.depart_date;
+function applyFilters(){
+  let maxPrice = parseInt(priceRange.value)*10000;
+  let selectedAirlines = Array.from(airlineCheckboxes).filte(cb=>cb.checked).map(cb=>cb.value);
+  filteredFlights = currentFlights.filter(f=>{
+    let priceOk = f.priceKRW<=maxPrice;
+    let airlineOk = selectedAirlines.includes(f.airline);
 
-          // 항공사 URL 결정
-          let airlineURL = "#";
-          const airline = flight.airline || "";
-          if(airline.includes("티웨이") || airline.includes("Tway")){
-            airlineURL = `https://www.twayair.com/booking?dep=${flight.from}&arr=${flight.to}&date=${departDateFormatted}`;
-          } else if(airline.includes("대한항공")){
-            airlineURL = `https://www.koreanair.com/global/ko/booking/search?from=${flight.from}&to=${flight.to}&date=${departDateFormatted}`;
-          } else if(airline.includes("아시아나")){
-            airlineURL = `https://flyasiana.com/C/KR/booking/search?dep=${flight.from}&arr=${flight.to}&date=${departDateFormatted}`;
-          } else {
-            // 그 외 항공사 기본 링크 (검색 페이지)
-            airlineURL = `https://www.google.com/search?q=${flight.airline}+항공권+${flight.from}+${flight.to}+${departDateFormatted}`;
-          }
+    // ✅ stops 필터 단순화
+    let stopOk = false;
+    if(f.stops === '직항' && directCheckbox.checked) stopOk = true;
+    if(f.stops !== '직항' && stopoverCheckbox.checked) stopOk = true;
 
-          // 카드 생성
-          const card = document.createElement('div');
-          card.className = 'flight-card';
-          card.innerHTML = `
-            <h3>항공편 ${idx+1}</h3>
-            <div class="info">
-              <div class="info-left">
-                <p class="flight-time">${flight.departure_time} (${flight.from}) → ${flight.arrival_time} (${flight.to})</p>
-                <p class="flight-airline">${flight.airline} / 편명: ${flight.flight_number}</p>
-              </div>
-              <div class="price">₩${priceKRW}</div>
-            </div>
-          `;
+    return priceOk && airlineOk && stopOk;
+  });
+  sortAndDraw();
+}
 
-          // 카드 클릭 시 해당 항공사 예약 페이지 이동
-          card.addEventListener('click', () => {
-            window.location.href = airlineURL;
-          });
+function sortAndDraw(){
+  let sorted = [...filteredFlights];
+  if(sortSelect.value==='price-asc') sorted.sort((a,b)=>a.priceKRW-b.priceKRW);
+  else if(sortSelect.value==='price-desc') sorted.sort((a,b)=>b.priceKRW-a.priceKRW);
+  updateResultCount(sorted.length);
+  drawCards(sorted);
+}
 
-          resultDiv.appendChild(card);
-        });
+priceRange.addEventListener('input',()=>{
+  priceLabel.textContent = `${priceRange.value}만원 이하`;
+  applyFilters();
+});
+directCheckbox.addEventListener('change',applyFilters);
+stopoverCheckbox.addEventListener('change',applyFilters);
+sortSelect.addEventListener('change',sortAndDraw);
+airlineCheckboxes.forEach(cb=>cb.addEventListener('change',applyFilters));
 
-      } catch(err){
-        resultDiv.innerHTML = `<p>⚠ 에러: ${err}</p>`;
-      }
+form.addEventListener('submit',async (e)=>{
+  e.preventDefault();
+  resultDiv.innerHTML=`<p>검색 중...</p>`;
+  const data = { from:form.from.value, to:form.to.value, depart_date:form.depart_date.value, return_date:form.return_date.value };
+  try{
+    const response = await fetch('/search_flight',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(data)
     });
-  </script>
+    let flights = await response.json();
+    if(!flights || flights.error) return resultDiv.innerHTML=`<p>⚠ 검색 오류</p>`;
+    if(flights.length===0) return resultDiv.innerHTML=`<p>⚠ 검색 결과가 없습니다.</p>`;
+
+    const seen = new Set();
+    flights = flights.filter(f=>{
+      const key = `${f.departure_time}_${f.arrival_time}_${f.airline}_${f.flight_number}`;
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0,20);
+
+    flights = flights.map(f=>{
+      const priceNumber = parseFloat(f.price.replace(/[^0-9.]/g,''))||0;
+      const priceKRW = Math.round(priceNumber*EXCHANGE_RATE);
+      const departDateFormatted = f.departure_time?f.departure_time.split('T')[0]:data.depart_date;
+      let airlineURL="#";
+      const airline=f.airline||"";
+      if(airline.includes("티웨이")||airline.includes("Tway")) airlineURL=`https://www.twayair.com/booking?dep=${f.from}&arr=${f.to}&date=${departDateFormatted}`;
+      else if(airline.includes("대한항공")) airlineURL=`https://www.koreanair.com/global/ko/booking/search?from=${f.from}&to=${f.to}&date=${departDateFormatted}`;
+      else if(airline.includes("아시아나")) airlineURL=`https://flyasiana.com/C/KR/booking/search?dep=${f.from}&arr=${f.to}&date=${departDateFormatted}`;
+      else airlineURL=`https://www.google.com/search?q=${airline}+항공권+${f.from}+${f.to}+${departDateFormatted}`;
+
+      let logoUrl="https://cdn-icons-png.flaticon.com/512/3799/3799805.png";
+      if(airline.includes("티웨이")||airline.includes("Tway")) logoUrl="/static/img/tway.png";
+      else if(airline.includes("제주항공")) logoUrl="/static/img/jeju.png";
+      else{ for(let key in airlineLogos){ if(airline.includes(key)){ logoUrl=airlineLogos[key]; break; } } }
+
+      f.priceKRW=priceKRW;
+      f.airlineURL=airlineURL;
+      f.logoUrl=logoUrl;
+      f.stops = f.stops || '직항';
+      return f;
+    });
+
+    currentFlights=flights;
+    applyFilters();
+
+  }catch(err){ resultDiv.innerHTML=`<p>⚠ 에러: ${err}</p>`; }
+});
+</script>
 </body>
 </html>
