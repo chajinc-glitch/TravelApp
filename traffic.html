@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>떠나자 - 교통</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  body { font-family: Arial; margin:0; }
+  header { position: sticky; top:0; background:#fff; padding:10px 50px; box-shadow:0 2px 5px rgba(0,0,0,0.1);}
+  .nav-links { list-style:none; display:flex; gap:20px; }
+  .nav-links li a { text-decoration:none; color:#333; font-weight:bold; }
+  .container { padding:20px; max-width:1000px; margin:auto; }
+  label { display:block; margin-top:10px; }
+  input, select { width: 250px; padding:5px; margin-top:5px; }
+  button { margin-top:10px; padding:8px 15px; cursor:pointer; }
+  #map { height:500px; margin-top:20px; }
+  #result { margin-top:20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <ul class="nav-links">
+    <li><a href="/">홈</a></li>
+    <li><a href="/theme">테마</a></li>
+    <li><a href="/region">지역</a></li>
+    <li><a href="/flight">항공</a></li>
+    <li><a href="/hotel">숙소</a></li>
+    <li><a href="/traffic">교통</a></li>
+  </ul>
+</header>
+
+<div class="container">
+  <h1>교통 경로 검색</h1>
+
+  <label>출발지 (주소 또는 위도,경도)</label>
+  <input type="text" id="start" placeholder="예: 37.5665,126.9780 또는 Times Square, New York">
+
+  <label>도착지 (주소 또는 위도,경도)</label>
+  <input type="text" id="end" placeholder="예: 37.5512,126.9882 또는 Central Park, New York">
+
+  <label>이동 수단</label>
+  <select id="vehicle">
+    <option value="car">자동차</option>
+    <option value="bike">자전거</option>
+    <option value="foot">도보</option>
+    <option value="transit">대중교통</option>
+  </select>
+
+  <div id="transit-options" style="display:none;">
+    <label>날짜 (대중교통용)</label>
+    <input type="date" id="date">
+    <label>시간 (대중교통용)</label>
+    <input type="time" id="time">
+  </div>
+
+  <button onclick="searchRoute()">경로 검색</button>
+
+  <div id="result"></div>
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let map = L.map('map').setView([37.5665, 126.9780], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap'
+}).addTo(map);
+let polyline;
+
+// 주소 → 위도/경도 변환 (Nominatim)
+async function geocode(address){
+  if(address.includes(',')){
+    let parts = address.split(',').map(x => x.trim());
+    if(!isNaN(parts[0]) && !isNaN(parts[1])) return [parseFloat(parts[0]), parseFloat(parts[1])];
+  }
+  try {
+    let res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`, {headers: {'User-Agent': 'FlaskApp'}});
+    let data = await res.json();
+    if(data.length > 0) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+  } catch(e){}
+  return null;
+}
+
+document.getElementById('vehicle').addEventListener('change', function(){
+  document.getElementById('transit-options').style.display = this.value==='transit' ? 'block' : 'none';
+});
+
+async function searchRoute(){
+  let start = document.getElementById('start').value;
+  let end = document.getElementById('end').value;
+  let vehicle = document.getElementById('vehicle').value;
+  let resultDiv = document.getElementById('result');
+  if(!start || !end){ alert("출발지와 도착지를 입력하세요."); return; }
+
+  resultDiv.innerHTML = "검색 중...";
+
+  let startCoords = await geocode(start);
+  let endCoords = await geocode(end);
+  if(!startCoords || !endCoords){ resultDiv.innerHTML="주소를 찾을 수 없습니다."; return; }
+
+  if(vehicle==='transit'){
+    let date = document.getElementById('date').value;
+    let time = document.getElementById('time').value;
+    if(!date || !time){ alert("날짜와 시간을 입력하세요."); return; }
+
+    fetch(`/api/otp_route?from=${startCoords[0]},${startCoords[1]}&to=${endCoords[0]},${endCoords[1]}&date=${date}&time=${time}`)
+      .then(res=>res.json())
+      .then(data=>{
+        if(data.error){ resultDiv.innerHTML=data.error; return; }
+        resultDiv.innerHTML="";
+        if(polyline){ map.removeLayer(polyline); }
+        data.forEach(itin=>{
+          itin.legs.forEach(leg=>{
+            resultDiv.innerHTML += `<p>${leg.mode}: ${leg.from} → ${leg.to} / ${Math.round(leg.distance)}m</p>`;
+          });
+        });
+      })
+      .catch(err=>{ resultDiv.innerHTML="오류: "+err; });
+  } else {
+    fetch(`/api/graphhopper_route?start=${startCoords[0]},${startCoords[1]}&end=${endCoords[0]},${endCoords[1]}&vehicle=${vehicle}`)
+      .then(res=>res.json())
+      .then(data=>{
+        if(data.error){ resultDiv.innerHTML=data.error; return; }
+        resultDiv.innerHTML=`거리: ${Math.round(data.distance)}m<br>예상 소요 시간: ${Math.round(data.time/60000)}분`;
+        if(polyline) map.removeLayer(polyline);
+        let coords = decodePolyline(data.points);
+        polyline = L.polyline(coords,{color:'blue'}).addTo(map);
+        map.fitBounds(polyline.getBounds());
+      })
+      .catch(err=>{ resultDiv.innerHTML="오류: "+err; });
+  }
+}
+
+// polyline decode (Google/GraphHopper format)
+function decodePolyline(str, precision) {
+  let index=0, lat=0, lng=0, coordinates=[], shift=0, result=0, byte=null, lat_change, lng_change;
+  precision=Math.pow(10,-5);
+  while(index<str.length){
+    shift=result=0;
+    do{ byte=str.charCodeAt(index++)-63; result|=(byte&0x1f)<<shift; shift+=5;} while(byte>=0x20);
+    lat_change=((result&1)?~(result>>1):(result>>1));
+    shift=result=0;
+    do{ byte=str.charCodeAt(index++)-63; result|=(byte&0x1f)<<shift; shift+=5;} while(byte>=0x20);
+    lng_change=((result&1)?~(result>>1):(result>>1));
+    lat+=lat_change; lng+=lng_change;
+    coordinates.push([lat*precision, lng*precision]);
+  }
+  return coordinates;
+}
+</script>
+</body>
+</html>

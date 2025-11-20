@@ -34,6 +34,31 @@ amadeus = AmadeusClient(
 )
 
 # ==============================
+# 🌟 추가: IATA 항공사 코드 -> 이름 매핑
+# Amadeus API에서 carrierCode를 'KE', 'OZ', 'TW' 등으로 반환하므로,
+# 이를 사용자 친화적인 이름으로 변환하기 위해 사용됩니다.
+# ==============================
+CARRIER_CODE_TO_NAME = {
+    "KE": "대한항공",
+    "OZ": "아시아나항공",
+    "TW": "티웨이항공",
+    "LJ": "진에어",
+    "7C": "제주항공",
+    "BX": "에어부산",
+    "ZE": "이스타항공",
+    "DL": "델타항공",
+    "UA": "유나이티드항공",
+    "AA": "아메리칸 항공",
+    "NH": "ANA (전일본공수)",
+    "JL": "JAL (일본항공)",
+    "CA": "에어 차이나",
+    "MU": "중국 동방 항공",
+    "SQ": "싱가포르항공",
+    # 필요하면 더 추가하세요.
+}
+
+
+# ==============================
 # 🔹 기본 페이지
 # ==============================
 @app.route("/")
@@ -57,6 +82,7 @@ def flight():
 
 # ==============================
 # 🔹 AI 여행지 추천 API
+# (변경 없음)
 # ==============================
 @app.route("/recommend", methods=["POST"])
 def recommend():
@@ -128,6 +154,7 @@ def recommend():
 
 # ==============================
 # 🔹 지역별 도시 상세 설명 API
+# (변경 없음)
 # ==============================
 @app.route("/getCityInfo", methods=["POST"])
 def get_city_info():
@@ -184,23 +211,7 @@ def get_city_info():
         })
 
 # ==============================
-# 🔹 Amadeus API 항공 검색 (air.html용) - 안정화 버전
-# ==============================
-def get_iata_code(city_name):
-    try:
-        response = amadeus.reference_data.locations.get(
-            keyword=city_name,
-            subType="CITY"
-        )
-        if response.data:
-            return response.data[0]['iataCode']
-        return None
-    except Exception as e:
-        print(f"IATA 코드 변환 에러: {e}")
-        return None
-
-# ==============================
-# 🔹 Amadeus API 항공 검색 (air.html용) - 안정화 버전
+# 🔹 IATA 코드 변환 함수 (기존 유지)
 # ==============================
 CITY_TO_IATA = {
     "서울": "ICN",
@@ -236,6 +247,72 @@ def get_iata_code(city_name):
         print(f"IATA 코드 변환 에러: {e}")
 
     return None
+
+# ==============================
+# 🔹 항공권 검색 API (air.html용) - 수정됨!
+# ==============================
+@app.route("/search_flight", methods=["POST"])
+def search_flight():
+    try:
+        data = request.get_json()
+        origin = data.get("from")
+        destination = data.get("to")
+        depart_date = data.get("depart_date")
+        return_date = data.get("return_date")
+
+        if not origin or not destination:
+            return jsonify({"error": "출발지와 도착지를 입력하세요."}), 400
+
+        # IATA 코드 변환
+        from_code = get_iata_code(origin)
+        to_code = get_iata_code(destination)
+        if not from_code or not to_code:
+            return jsonify({"error": "도시명을 IATA 코드로 변환할 수 없습니다."}), 400
+
+        # Amadeus 항공편 검색 API
+        response = amadeus.shopping.flight_offers_search.get(
+            originLocationCode=from_code,
+            destinationLocationCode=to_code,
+            departureDate=depart_date,
+            returnDate=return_date,
+            adults=1,
+            currencyCode="USD",
+            max=5
+        )
+
+        flights = []
+        for offer in response.data:
+            price = offer["price"]["total"]
+            itineraries = offer["itineraries"][0]["segments"]
+            first = itineraries[0]
+            last = itineraries[-1]
+            carrier_code = first["carrierCode"]
+            
+            # 🌟 수정된 부분: IATA 코드 -> 항공사 이름 변환
+            airline_name = CARRIER_CODE_TO_NAME.get(carrier_code, carrier_code)
+            
+            flights.append({
+                "from": origin, # IATA 코드 대신 원본 도시명을 다시 사용
+                "to": destination, # IATA 코드 대신 원본 도시명을 다시 사용
+                "departure_time": first["departure"]["at"],
+                "arrival_time": last["arrival"]["at"],
+                "airline": airline_name, # 🌟 변환된 항공사 이름 사용
+                "flight_number": first["number"],
+                "price": f"${price}"
+            })
+
+        return jsonify(flights)
+
+    except ResponseError as e:
+        return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": f"예외 발생: {e}"}), 500
+
+
+
+
+from flask import Flask, request, jsonify, render_template
+import requests
 
 # ==============================
 # 🔹 HOTEL SEARCH API (Amadeus 통합)
@@ -299,9 +376,153 @@ def get_hotels():
         return jsonify(results)
     except Exception as e:
         return jsonify({"error": f"호텔 API 호출 실패: {e}"}), 500
+        
+# ==============================
+# 🚦 교통(Traffic/Transit) 기능 시작
+# ==============================
+
+import requests
+from flask import Flask, request, jsonify, render_template
+
+
+
+# GraphHopper API 키
+GRAPHHOPPER_KEY = "c87794e5-7930-458b-965b-1c782e438d7c"
+
+# OTP 서버 URL (자체 설치 기준)
+OTP_SERVER_URL = "http://localhost:8080/otp/routers/default/plan"
 
 # ==============================
-# 🚀 실행
+# 🔹 교통 페이지 라우트
 # ==============================
+@app.route("/traffic")
+def traffic_page():
+    return render_template("traffic.html")  # templates/traffic.html 필요
+
+# ==============================
+# 🔹 Nominatim 주소 → 위도/경도
+# ==============================
+def geocode_address(address):
+    url = "https://nominatim.openstreetmap.org/search"
+    params = {"q": address, "format": "json", "limit": 1}
+    try:
+        resp = requests.get(url, params=params, headers={"User-Agent": "FlaskApp"})
+        data = resp.json()
+        if data:
+            return data[0]['lat'], data[0]['lon']
+        return None, None
+    except:
+        return None, None
+
+# ==============================
+# 🔹 GraphHopper 경로 탐색 API
+# ==============================
+@app.route("/api/graphhopper_route", methods=["GET"])
+def graphhopper_route():
+    start = request.args.get("start")  # 주소 또는 "위도,경도"
+    end = request.args.get("end")
+    vehicle = request.args.get("vehicle", "car")
+
+    if not start or not end:
+        return jsonify({"error": "start와 end 파라미터 필요"}), 400
+
+    # 주소 입력이면 위도/경도로 변환
+    if "," not in start:
+        lat, lon = geocode_address(start)
+        if not lat:
+            return jsonify({"error": f"출발지 주소를 찾을 수 없음: {start}"}), 400
+        start = f"{lat},{lon}"
+
+    if "," not in end:
+        lat, lon = geocode_address(end)
+        if not lat:
+            return jsonify({"error": f"도착지 주소를 찾을 수 없음: {end}"}), 400
+        end = f"{lat},{lon}"
+
+    url = f"https://graphhopper.com/api/1/route?point={start}&point={end}&vehicle={vehicle}&locale=ko&calc_points=true&key={GRAPHHOPPER_KEY}"
+
+    try:
+        resp = requests.get(url)
+        data = resp.json()
+        if "paths" in data:
+            path = data["paths"][0]
+            return jsonify({
+                "distance": path.get("distance"),
+                "time": path.get("time"),
+                "points": path.get("points")
+            })
+        return jsonify({"error": "경로를 찾을 수 없음", "details": data}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ==============================
+# 🔹 OpenTripPlanner 경로 탐색 API (대중교통)
+# ==============================
+@app.route("/api/otp_route", methods=["GET"])
+def otp_route():
+    from_addr = request.args.get("from")  # 주소 또는 "위도,경도"
+    to_addr = request.args.get("to")
+    date = request.args.get("date")
+    time = request.args.get("time")
+
+    if not all([from_addr, to_addr, date, time]):
+        return jsonify({"error": "모든 파라미터 필요"}), 400
+
+    # 주소 → 위도/경도 변환
+    if "," not in from_addr:
+        from_lat, from_lon = geocode_address(from_addr)
+    else:
+        from_lat, from_lon = map(str, from_addr.split(","))
+
+    if "," not in to_addr:
+        to_lat, to_lon = geocode_address(to_addr)
+    else:
+        to_lat, to_lon = map(str, to_addr.split(","))
+
+    if not all([from_lat, from_lon, to_lat, to_lon]):
+        return jsonify({"error": "주소를 위도/경도로 변환할 수 없음"}), 400
+
+    params = {
+        "fromPlace": f"{from_lat},{from_lon}",
+        "toPlace": f"{to_lat},{to_lon}",
+        "mode": "TRANSIT,WALK",
+        "date": date,
+        "time": time,
+        "maxWalkDistance": 1000
+    }
+
+    try:
+        response = requests.get(OTP_SERVER_URL, params=params)
+        if response.status_code != 200:
+            return jsonify({"error": "OTP 서버 호출 실패", "status": response.status_code, "text": response.text}), 500
+        data = response.json()
+        if "plan" in data:
+            itineraries = data["plan"].get("itineraries", [])
+            results = []
+            for itin in itineraries:
+                legs = []
+                for leg in itin.get("legs", []):
+                    legs.append({
+                        "mode": leg.get("mode"),
+                        "startTime": leg.get("startTime"),
+                        "endTime": leg.get("endTime"),
+                        "from": leg.get("from", {}).get("name"),
+                        "to": leg.get("to", {}).get("name"),
+                        "distance": leg.get("distance"),
+                        "route": leg.get("route")
+                    })
+                results.append({
+                    "duration": itin.get("duration"),
+                    "legs": legs
+                })
+            return jsonify(results)
+        return jsonify({"error": "대중교통 경로를 찾을 수 없음", "details": data}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ==============================
+# 🚦 교통 기능 종료
+# ==============================
+
 if __name__ == "__main__":
     app.run(debug=True)
