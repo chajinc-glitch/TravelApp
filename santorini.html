@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>떠나자 - 산토리니</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <style>
+    body { 
+      font-family: 'Inter', sans-serif; 
+      margin: 0; 
+      background: #f4f6f8;
+      color: #333;
+      overflow-x: hidden;
+    }
+
+    /* Smooth Fade Animation */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(30px);
+      animation: fadeUp 0.8s ease forwards;
+    }
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    header { 
+      position: sticky; 
+      top: 0; 
+      z-index: 1000; 
+      background: rgba(255,255,255,0.95); 
+      backdrop-filter: blur(10px); 
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+    }
+    .navbar { display: flex; justify-content: space-between; align-items: center; padding: 15px 60px; }
+    .logo { font-family: 'Gaegu', cursive; font-size: 36px; color: #00aaff; cursor: pointer; transition: transform 0.2s; }
+    .logo:hover { transform: scale(1.05); }
+    .nav-links { list-style: none; display: flex; gap: 30px; margin: 0; padding: 0; }
+    .nav-links li a { text-decoration: none; color: #333; font-weight: bold; font-size: 18px; transition: color 0.2s; }
+    .nav-links li a:hover { color: #00aaff; }
+
+    /* Hero Section */
+    .hero { 
+      position: relative; 
+      height: 60vh; 
+      background: url('static/img/san1.jpg') center/cover no-repeat fixed; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      color: white; 
+      text-shadow: 2px 2px 8px rgba(0,0,0,0.6);
+    }
+    .hero h1 { font-family: 'Gaegu'; font-size: 70px; margin: 0; animation: fadeUp 1.4s ease; }
+    .hero p { font-size: 24px; margin-top: 10px; animation: fadeUp 1.8s ease; }
+
+    main { max-width: 1200px; margin: -40px auto 100px; padding: 20px; }
+
+    /**************** Grid Section ****************/
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 25px;
+      margin-top: 60px;
+    }
+
+    .spot-card {
+      position: relative;
+      height: 300px;
+      border-radius: 14px;
+      overflow: hidden;
+      cursor: pointer;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.15);
+      transition: 0.3s;
+    }
+    .spot-card:hover { transform: translateY(-8px); }
+
+    .spot-card img { 
+      width: 100%; height: 100%; object-fit: cover; 
+      transition: .35s; 
+    }
+
+    .spot-card:hover img { 
+      filter: brightness(0.4) blur(2px); 
+      transform: scale(1.07); 
+    }
+
+    .spot-title {
+      position: absolute; bottom: 12px; left: 15px;
+      font-size: 22px; color: white; font-weight: bold;
+      text-shadow: 2px 2px 6px rgba(0,0,0,0.7);
+    }
+
+    .spot-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: #00aaff;
+      color: white;
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 30px;
+      letter-spacing: 0.5px;
+    }
+
+    .spot-overlay {
+      position: absolute; 
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      padding: 25px; box-sizing: border-box;
+      background: rgba(0,0,0,0.65); 
+      color: white; 
+      text-align: center;
+      font-size: 16px; 
+      line-height: 1.6;
+      opacity: 0; 
+      transition: .3s;
+    }
+    .spot-card:hover .spot-overlay { opacity: 1; }
+
+    /* info box */
+    .info-box {
+      background: white;
+      padding: 30px;
+      border-radius: 14px;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+      margin-top: 60px;
+      line-height: 1.8;
+    }
+    .info-box h3 { font-family:'Gaegu'; font-size: 32px; margin-bottom: 15px; color:#007acc; }
+
+    /* Tips */
+    .tips {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 25px;
+      margin-top: 40px;
+    }
+
+    .tip-card {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+      text-align: center;
+      transition: .25s;
+    }
+    .tip-card:hover { transform: translateY(-6px); }
+
+    .tip-card h4 { margin-bottom: 10px; font-weight: 600; color:#007acc; }
+
+    /* Schedule */
+    .schedule-box {
+      margin-top: 70px;
+      padding: 30px;
+      background: #e8f5ff;
+      border-left: 6px solid #00aaff;
+      border-radius: 10px;
+      line-height: 1.8;
+    }
+
+    /* Banner */
+    .travel-banner {
+      margin-top: 80px;
+      padding: 60px;
+      background: url('static/img/san2.jpg') center/cover no-repeat;
+      color: white;
+      border-radius: 16px;
+      text-shadow: 2px 3px 8px rgba(0,0,0,0.6);
+      text-align: center;
+      font-size: 36px;
+      font-family: 'Gaegu';
+      transition: .3s;
+    }
+    .travel-banner:hover { transform: scale(1.02); }
+
+    /* Back Button */
+    .back-btn {
+      display: inline-block;
+      margin-top: 50px;
+      padding: 12px 20px;
+      text-decoration: none;
+      color: #00aaff;
+      font-weight: bold;
+      border: 2px solid #00aaff;
+      border-radius: 6px;
+      transition: 0.2s;
+    }
+    .back-btn:hover { background-color: #00aaff; color: white; }
+
+    /* Footer */
+    footer {
+      margin-top: 120px;
+      background: #1a1a1a;
+      color: #bbb;
+      padding: 40px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+  </style>
+</head>
+
+<body>
+
+<header class="fade-up">
+  <nav class="navbar">
+    <div class="logo" onclick="location.href='/'">떠나자</div>
+    <ul class="nav-links">
+      <li><a href="/">홈</a></li>
+      <li><a href="/theme">테마</a></li>
+      <li><a href="/region">지역</a></li>
+      <li><a href="/flight">항공</a></li>
+      <li><a href="/hotel">숙소</a></li>
+      <li><a href="/traffic">교통</a></li>
+      <li><a href="/schedule">일정</a></li>
+    </ul>
+  </nav>
+</header>
+
+<section class="hero fade-up">
+  <div>
+    <h1>산토리니, 그리스</h1>
+    <p>푸른 바다와 하얀 마을이 어우러진 휴양의 천국</p>
+  </div>
+</section>
+
+<main>
+
+  <!-- 소개 -->
+  <div class="info-box fade-up">
+    <h3>산토리니는 어떤 곳일까?</h3>
+    에게해의 아름다운 섬, 산토리니는 그림 같은 하얀 마을과 푸른 지붕,<br>
+    멋진 일몰로 유명합니다.<br>
+    여행자들에게는 휴양과 사진 명소로 최고의 여행지입니다.
+  </div>
+
+  <!-- 인기 명소 -->
+  <h2 class="fade-up" style="font-family:'Gaegu'; color:#007acc; margin-top:60px;">산토리니 인기 명소 4곳</h2>
+
+  <div class="grid-4 fade-up">
+
+    <div class="spot-card">
+      <span class="spot-badge">HOT</span>
+      <img src="static/img/san1.jpg" alt="피르고스">
+      <div class="spot-title">피르고스</div>
+      <div class="spot-overlay">전통 마을 풍경과 언덕 위 전망이 아름다운 산토리니의 중심 마을입니다.</div>
+    </div>
+
+    <div class="spot-card">
+      <span class="spot-badge">필수코스</span>
+      <img src="static/img/san2.jpg" alt="카마리 비치">
+      <div class="spot-title">카마리 비치</div>
+      <div class="spot-overlay">검은 모래 해변과 다양한 레스토랑, 해양 액티비티가 있는 휴양지입니다.</div>
+    </div>
+
+    <div class="spot-card">
+      <span class="spot-badge">뷰맛집</span>
+      <img src="static/img/san3.jpg" alt="아모디 베이">
+      <div class="spot-title">아모디 베이</div>
+      <div class="spot-overlay">작은 항구와 선셋 뷰, 해산물 레스토랑으로 유명한 조용한 휴식 공간입니다.</div>
+    </div>
+
+    <div class="spot-card">
+      <span class="spot-badge">분위기</span>
+      <img src="static/img/san4.jpg" alt="메사비노 산 고대 티라">
+      <div class="spot-title">메사비노 산 & 고대 티라</div>
+      <div class="spot-overlay">고대 유적과 절경이 어우러진 산토리니의 역사적 명소입니다.</div>
+    </div>
+
+  </div>
+
+  <!-- Tips -->
+  <div class="tips fade-up">
+    <div class="tip-card">
+      <h4>✔ 추천 여행 기간</h4>
+      3박 4일이 가장 여유롭게 섬을 즐길 수 있어요.
+    </div>
+    <div class="tip-card">
+      <h4>✔ 이동 루트 추천</h4>
+      피르고스 → 카마리 비치 → 아모디 베이 → 메사비노 산 순으로 이동하면 편리합니다.
+    </div>
+    <div class="tip-card">
+      <h4>✔ 음식 Tip</h4>
+      신선한 해산물과 그리스 전통 요리, 와인이 유명해요.
+    </div>
+  </div>
+
+  <!-- 일정 -->
+  <div class="schedule-box fade-up">
+    <h3 style="font-family:'Gaegu'; color:#007acc; margin-top:0;">추천 2박 3일 일정</h3>
+    <b>DAY1</b> : 피르고스 → 메사비노 산 → 고대 티라 → 일몰 감상<br>
+    <b>DAY2</b> : 카마리 비치 → 아모디 베이 → 선셋 디너<br>
+    <b>DAY3</b> : 자유 일정 & 쇼핑 → 공항 이동
+  </div>
+
+  <!-- Banner -->
+  <div class="travel-banner fade-up">
+    산토리니 여행, 지금 떠나볼까요?
+  </div>
+
+  <a href="/" class="back-btn fade-up">← 여행지 목록으로 돌아가기</a>
+
+</main>
+
+<footer>
+  © 2025 떠나자 Travel. All Rights Reserved.
+</footer>
+
+</body>
+</html>
