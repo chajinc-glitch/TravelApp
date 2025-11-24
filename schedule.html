@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>여행 일정 생성기</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .input-box { margin-bottom: 15px; }
+        input, button {
+            padding: 10px; font-size: 16px;
+            width: 100%; margin-bottom: 10px;
+        }
+        button { background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+
+        h2 { margin-top: 30px; }
+
+        .day-box { margin-bottom: 25px; }
+
+        .schedule-item {
+            background: #f5f5f5;
+            padding: 10px; border-radius: 8px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🧭 여행 일정 자동 생성</h1>
+
+    <div class="input-box">
+        <label>여행지 목록 (쉼표로 구분):</label>
+        <input id="places" placeholder="예: 서울, 부산, 제주도">
+    </div>
+
+    <div class="input-box">
+        <label>여행 기간 (일):</label>
+        <input id="days" type="number" value="3">
+    </div>
+
+    <div class="input-box">
+        <label>예산 (원):</label>
+        <input id="budget" type="number" value="300000">
+    </div>
+
+    <button onclick="generateSchedule()">일정 생성</button>
+
+    <div id="result" style="margin-top: 20px;"></div>
+
+<script>
+// =========================
+// 🔹 여행 일정 생성 요청
+// =========================
+async function generateSchedule() {
+    const placesInput = document.getElementById("places").value.trim();
+    const days = document.getElementById("days").value;
+    const budget = document.getElementById("budget").value;
+
+    if (!placesInput) {
+        alert("여행지를 입력하세요.");
+        return;
+    }
+
+    const places = placesInput.split(",").map(p => p.trim());
+
+    const body = {
+        places: places,         // 🔥 한글 입력 그대로 서버로 전송
+        days: parseInt(days),
+        budget: parseInt(budget) // 🔥 원화 전달
+    };
+
+    document.getElementById("result").innerHTML = "<p>일정 생성 중... 잠시만 기다려주세요!</p>";
+
+    try {
+        const res = await fetch("/api/plan_trip", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        console.log("여행 일정 데이터:", data);
+
+        renderSchedule(data);
+
+    } catch (error) {
+        console.error(error);
+        document.getElementById("result").innerHTML = "<p>오류 발생</p>";
+    }
+}
+
+// =========================
+// 🔹 일정 HTML 렌더링
+// =========================
+function renderSchedule(data) {
+    let html = "";
+
+    data.forEach(day => {
+        html += `
+        <h2>📅 Day ${day.day}</h2>
+        <div class="day-box">
+        `;
+
+        day.schedule.forEach(item => {
+            html += `
+            <div class="schedule-item">
+                <p><strong>${item.time}</strong></p>
+                <p>${item.activity}</p>
+            </div>`;
+        });
+
+        html += `</div>`;
+    });
+
+    document.getElementById("result").innerHTML = html;
+}
+</script>
+
+</body>
+</html>
