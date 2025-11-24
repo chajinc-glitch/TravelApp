@@ -9,6 +9,39 @@ from dotenv import load_dotenv
 
 app = Flask(__name__)
 
+@app.route('/kyoto')
+def kyoto():
+    return render_template('kyoto.html')
+
+@app.route('/sydney')
+def sydney():
+    return render_template('sydney.html')
+
+@app.route('/santorini')
+def santorini():
+    return render_template('santorini.html')
+
+@app.route('/paris')
+def paris():
+    return render_template('paris.html')
+
+@app.route('/bali')
+def bali():
+    return render_template('bali.html')
+
+@app.route('/newyork')
+def newyork():
+    return render_template('newyork.html')
+
+@app.route('/rome')
+def rome():
+    return render_template('rome.html')
+
+@app.route('/iceland')
+def iceland():
+    return render_template('iceland.html')
+
+
 # ==============================
 # 🔹 환경 변수
 # ==============================
@@ -524,5 +557,111 @@ def otp_route():
 # 🚦 교통 기능 종료
 # ==============================
 
+from flask import Flask, jsonify, request, render_template
+from flask_cors import CORS
+import google.generativeai as genai
+import os, json, re
+
+
+CORS(app)
+
+# ==============================
+# 🔹 API Keys
+# ==============================
+gemini_key = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=gemini_key)
+
+# ==============================
+# 🔹 기본 페이지
+# ==============================
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+@app.route("/schedule")
+def schedule():
+    return render_template("schedule.html")
+
+
+# ==============================
+# 🔹 여행 일정 생성 API
+# ==============================
+@app.route("/api/plan_trip", methods=["POST"])
+def plan_trip():
+    """
+    사용자 입력 JSON 예시:
+    {
+        "places": ["서울", "부산"],
+        "days": 3,
+        "budget": 300000
+    }
+    """
+
+    data = request.get_json()
+    places = data.get("places", [])
+    days = data.get("days", 1)
+    budget = data.get("budget", None)   # 🔥 원화 기반 예산
+
+    if not places:
+        return jsonify({"error": "여행지를 하나 이상 입력하세요."}), 400
+
+    # ==============================
+    # 🔹 Gemini 프롬프트
+    # ==============================
+    prompt_places = ", ".join(places)
+    prompt = f"""
+사용자가 입력한 여행지: {prompt_places}
+여행 기간: {days}일
+예산: {budget}원
+
+요구사항:
+- 각 날마다 여행지 3~4곳 추천
+- 점심과 저녁 포함
+- 각 활동은 시간 순서대로 정렬
+- 예상 소요시간 간단히 포함
+- JSON 배열 형식으로 반환
+- 문자열은 큰따옴표(") 사용
+- 출력 예시:
+[
+  {{
+    "day": 1,
+    "schedule": [
+      {{"time": "09:00", "activity": "경복궁 방문"}},
+      {{"time": "12:30", "activity": "점심 식사"}}
+    ]
+  }}
+]
+"""
+
+    try:
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        response = model.generate_content(prompt)
+
+        text = response.text.strip().replace("\n", " ").replace("'", '"')
+        match = re.search(r'\[.*\]', text, re.DOTALL)
+        itinerary = json.loads(match.group(0)) if match else []
+
+        # 🔥 이미지 관련 로직 완전 삭제됨
+
+        return jsonify(itinerary)
+
+    except Exception as e:
+        return jsonify([
+            {
+                "day": 1,
+                "schedule": [
+                    {
+                        "time": "09:00",
+                        "activity": "AI 일정 생성 실패"
+                    }
+                ],
+                "error": str(e)
+            }
+        ])
+
+
+# ==============================
+# 🔹 서버 실행
+# ==============================
 if __name__ == "__main__":
     app.run(debug=True)
